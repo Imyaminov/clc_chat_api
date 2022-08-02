@@ -46,4 +46,7 @@ class ChatConsumer(WebsocketConsumer):
         )
 
     def chat_message(self, event):
+        self.send(text_data=json.dumps(event['data']))
+
+    def chat_message_without_data(self, event):
         self.send(text_data=json.dumps(event))
