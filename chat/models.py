@@ -8,13 +8,24 @@ from common.models import User
 
 
 class Chat(models.Model):
-    members = models.ManyToManyField(User)
+    # GROUP fields
+    title = models.CharField(max_length=255, null=True, blank=True)
+    avatar = models.ImageField(upload_to="chat/", null=True, blank=True)
+
+    members = models.ManyToManyField(User, related_name="chat")
+    pinned = models.ManyToManyField(User, related_name='user_pinned')
+    unmuted = models.ManyToManyField(User, related_name='user_unmuted')
+    is_group = models.BooleanField(default=False)
+    is_archived = models.ManyToManyField(User, related_name='user_archived')
 
 
 class Message(models.Model):
-    chat = models.ForeignKey(Chat, on_delete=models.CASCADE)
-    text = models.TextField()
     from_user = models.ForeignKey(User, on_delete=models.CASCADE)
+    chat = models.ForeignKey(
+        Chat, on_delete=models.CASCADE, related_name="messages")
+    text = models.TextField()
+    read = models.ManyToManyField(User, related_name='user_read')
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 @receiver(post_save, sender=Message)
