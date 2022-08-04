@@ -8,7 +8,6 @@ from common.models import User
 
 
 class Chat(models.Model):
-    # GROUP fields
     title = models.CharField(max_length=255, null=True, blank=True)
     avatar = models.ImageField(upload_to="chat/", null=True, blank=True)
 
@@ -20,11 +19,13 @@ class Chat(models.Model):
 
 
 class Message(models.Model):
-    from_user = models.ForeignKey(User, on_delete=models.CASCADE)
+    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sender')
     chat = models.ForeignKey(
         Chat, on_delete=models.CASCADE, related_name="messages")
     text = models.TextField()
-    read = models.ManyToManyField(User, related_name='user_read')
+    image = models.ImageField(upload_to='image_image', blank=True)
+    icon = models.FileField(upload_to='message_icons/', blank=True)
+    read = models.ManyToManyField(User, related_name='user_read', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -35,10 +36,10 @@ def my_handler(sender, instance, created, **kwargs):
     """
     channel_layer = get_channel_layer()
     if created:
-
         # YANGI XABAR BO'LSA
-        async_to_sync(channel_layer.group_send)(
+        async_to_sync(channel_layer.send)(
             "clc", {"type": "chat_message", "data": {
+                # 'user': user.username,
                 "id": instance.id,
                 "status": "new_message",
                 "text": instance.text,
@@ -57,3 +58,28 @@ def my_handler(sender, instance, created, **kwargs):
                 "from_user_id": instance.from_user_id,
             }}
         )
+
+# @receiver(post_save, sender=User)
+# def my_handler(sender, instance, created, **kwargs):
+#     """
+#     Send message to channel
+#     """
+#     channel_layer = get_channel_layer()
+#
+#     if instance.is_online:
+#
+#         async_to_sync(channel_layer.group_send)(
+#             "clc", {"type": "chat_message", "data": {
+#                 "id": instance.id,
+#                 "status": "online",
+#                 "email": instance.email,
+#             }}
+#         )
+#     else:
+#         async_to_sync(channel_layer.group_send)(
+#             "clc", {"type": "chat_message", "data": {
+#                 "id": instance.id,
+#                 "status": "offline",
+#                 "email": instance.email,
+#             }}
+#         )

@@ -5,7 +5,7 @@ from django.db import models
 from chat.models import Chat, Message
 from common.models import User
 from chat import serializers
-
+from rest_framework.permissions import IsAuthenticated
 
 class ChatListView(generics.ListAPIView):
     queryset = Chat.objects.all().annotate(
@@ -23,8 +23,9 @@ class ChatListView(generics.ListAPIView):
             profile_image=models.Case(
                 models.When(is_group=True, then=models.F('avatar')),
                 models.When(is_group=False, then=User.objects.exclude(
-                    id=self.request.user.id).filter(chat__title=models.OuterRef('title')).values('avatar')[:1]),
-                default=models.Value('None image')
+                    id=self.request.user.id).filter(chat__title=models.OuterRef('title')).values('avatar')[:1],),
+                default=models.Value('None image'),
+                output_field=models.CharField()
 
             ),
             # profile title
@@ -39,6 +40,20 @@ class ChatListView(generics.ListAPIView):
                 models.When(unmuted=self.request.user, then=True),
                 default= False,
                 output_field=models.BooleanField()
+            ),
+            is_pinned=models.Case(
+                models.When(pinned=self.request.user, then=True),
+                default=False,
+                output_field=models.BooleanField()
             )
 
-        )
+        ).order_by("-is_pinned", "-messages__created_at").distinct()
+
+class MessageApiView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = Message.objects.all()
+    serializer_class = serializers.MessageSerializer
+
+    def get_queryset(self):
+        return self.queryset.filter(chat__id=self.kwargs['chat'])
+
